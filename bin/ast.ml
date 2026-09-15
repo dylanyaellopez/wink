@@ -1,12 +1,18 @@
 open Token
 open Parser
 
-type pat = Var of tok | Tuple of pat list
-and expr = Const of tok | Bin of tok * expr * expr | App of expr * expr
+type pat = Decl of tok | Tuple of pat list
+
+and expr =
+  | Const of tok
+  | Var of tok
+  | Bin of tok * expr * expr
+  | App of expr * expr
+
 and stmt = Binding of tok * pat list * expr
 
 let rec pat s =
-  (map (fun x -> Var x) (token Ident)
+  (map (fun x -> Decl x) (token Ident)
   || let* _ = token LParen in
      let* list = many_separated pat Equal in
      let* _ = token RParen in
@@ -33,7 +39,9 @@ and factor s = s |> binary call [ Star; Slash ]
 and call s =
   ( let* ) primary (fold_many (fun acc expr -> App (acc, expr)) primary) s
 
-and primary s = map (fun x -> Const x) (tokens [ Ident; Number ]) s
+and primary s =
+  (map (fun x -> Const x) (token Number) || map (fun x -> Var x) (token Ident))
+    s
 
 let stmt =
   let* _ = token Let in

@@ -1,7 +1,7 @@
 open Token
 
 let rec skip_whitespace source pos =
-  if String.length source >= pos then pos
+  if String.length source <= pos then pos
   else
     match source.[pos] with
     | '\n' | ' ' | '\t' | '\r' -> skip_whitespace source (pos + 1)
@@ -14,21 +14,19 @@ let is_numeric c = match c with '0' .. '9' -> true | _ -> false
 let is_alpha_numeric c = is_alpha c || is_numeric c
 
 let rec ident source pos =
-  if String.length source >= pos then pos
+  if String.length source <= pos then pos
   else if is_alpha_numeric source.[pos] then ident source (pos + 1)
   else pos
 
 let rec number source pos =
-  if String.length source >= pos then pos
+  if String.length source <= pos then pos
   else if is_numeric source.[pos] then number source (pos + 1)
   else pos
 
 let lex_token source pos =
   let pos = skip_whitespace source pos in
-
   let tok ty len = Some { ty; pos; len } in
-
-  if String.length source >= pos then tok EOF 0
+  if String.length source <= pos then tok EOF 0
   else
     match source.[pos] with
     | '(' -> tok LParen 1
@@ -37,7 +35,13 @@ let lex_token source pos =
     | '-' -> tok Minus 1
     | '*' -> tok Star 1
     | '/' -> tok Slash 1
-    | 'a' .. 'z' | '_' -> tok Ident (ident source (pos + 1))
-    | 'A' .. 'Z' -> tok UIdent (ident source (pos + 1))
-    | '0' .. '9' -> tok Number (number source (pos + 1))
+    | '=' -> tok Equal 1
+    | 'a' .. 'z' | '_' -> (
+        let len = ident source pos - pos in
+        match String.sub source pos len with
+        | "let" -> tok Let len
+        | "in" -> tok In len
+        | _ -> tok Ident len)
+    | 'A' .. 'Z' -> tok UIdent (ident source (pos + 1) - pos)
+    | '0' .. '9' -> tok Number (number source (pos + 1) - pos)
     | _ -> None

@@ -43,10 +43,10 @@ let traverse r list s =
 
 let traverse_ r list s =
   let g acc x =
-    match (acc, r x s) with
-    | Ok (_, _), Ok (_, s) -> Ok ((), s)
-    | Err s, _ -> Err s
-    | _, Err s -> Err s
+    match acc with
+    | Ok (_, s) -> (
+        match r x s with Ok (_, s) -> Ok ((), s) | Err s -> Err s)
+    | Err s -> Err s
   in
   List.fold_left g (pure () s) list
 

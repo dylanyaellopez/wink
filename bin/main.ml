@@ -7,5 +7,8 @@ let source =
 
 let _ =
   match Ast.stmts (new_state source) with
-  | Ok (stmts, _) -> print_endline (Int.to_string (List.length stmts))
-  | Err -> print_endline "error"
+  | Ok (stmts, _) -> (
+      match Resolver.stmts stmts (Resolver.new_state source) with
+      | Ok ((str1, str2), _) -> print_endline (str1 ^ "\n" ^ str2)
+      | Err s -> print_endline s)
+  | Err -> print_endline "error parser"

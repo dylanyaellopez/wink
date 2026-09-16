@@ -1,6 +1,8 @@
 open Token
 open Parser
 
+type attribute = tok * tok option
+
 type pat = Decl of tok | Tuple of pat list
 
 and expr =
@@ -9,7 +11,7 @@ and expr =
   | Bin of tok * expr * expr
   | App of expr * expr
 
-and stmt = Binding of tok * pat list * expr
+and stmt = Binding of attribute option * tok * pat list * expr
 
 let rec pat s =
   (map (fun x -> Decl x) (token Ident)
@@ -43,12 +45,19 @@ and primary s =
   (map (fun x -> Const x) (token Number) || map (fun x -> Var x) (token Ident))
     s
 
+let attribute =
+  let* _ = token At in
+  let* ident = token Ident in
+  let* arg = opt (token Ident) in
+  pure (ident, arg)
+
 let stmt =
+  let* atr = opt attribute in
   let* _ = token Let in
   let* ident = token Ident in
   let* params = many pat in
   let* _ = token Equal in
   let* expr = expr in
-  pure (Binding (ident, params, expr))
+  pure (Binding (atr, ident, params, expr))
 
 let stmts = many_to_end stmt

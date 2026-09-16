@@ -7,6 +7,7 @@ type tok_ty =
   | Minus
   | Star
   | Slash
+  | At
   | Number
   | Let
   | Equal
@@ -25,6 +26,7 @@ let show_tok_ty ty =
   | Minus -> "-"
   | Star -> "*"
   | Slash -> "/"
+  | At -> "@"
   | Number -> "Number"
   | Let -> "let"
   | Equal -> "="

@@ -35,6 +35,7 @@ let lex_token source pos =
     | '-' -> tok Minus 1
     | '*' -> tok Star 1
     | '/' -> tok Slash 1
+    | '@' -> tok At 1
     | '=' -> tok Equal 1
     | 'a' .. 'z' | '_' -> (
         let len = ident source pos - pos in

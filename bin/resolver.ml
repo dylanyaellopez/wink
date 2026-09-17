@@ -9,7 +9,7 @@ type resolver_state = {
   binding : int;
   local : int;
   locals : int StringMap.t;
-  self : mod_scope;
+  mod_bindings : mod_scope;
   dependent_bindings : IntSet.t;
 }
 
@@ -19,7 +19,7 @@ let new_state source =
     binding = 0;
     local = 0;
     locals = StringMap.empty;
-    self = StringMap.empty;
+    mod_bindings = StringMap.empty;
     dependent_bindings = IntSet.empty;
   }
 
@@ -60,18 +60,29 @@ type expr =
 
 type stmt = Binding of int * pat list * expr
 
-let decl_binding tok s =
-  let name = String.sub s.source tok.pos tok.len in
-  match StringMap.find_opt name s.self with
+let decl_binding_str name s =
+  match StringMap.find_opt name s.mod_bindings with
   | Some binding -> Err ("binding already exists : " ^ name)
   | None ->
       Ok
         ( s.binding,
           {
             s with
-            self = StringMap.add name s.binding s.self;
+            mod_bindings = StringMap.add name s.binding s.mod_bindings;
             binding = s.binding + 1;
           } )
+
+let decl_foreign_binding name binding s =
+  Ok
+    ( s.binding,
+      { s with mod_bindings = StringMap.add name binding s.mod_bindings } )
+
+let decl_binding tok s =
+  let name = String.sub s.source tok.pos tok.len in
+  decl_binding_str name s
+
+let pop_bindings s =
+  Ok (s.mod_bindings, { s with mod_bindings = StringMap.empty })
 
 let decl_stmt stmt =
   match stmt with Ast.Binding (atr, tok, pats, expr) -> decl_binding tok
@@ -79,8 +90,7 @@ let decl_stmt stmt =
 let decl_stmts stmts = traverse decl_stmt stmts
 let scope r s = match r s with Ok (res, _) -> Ok (res, s) | Err s -> Err s
 
-let decl_local tok s =
-  let name = String.sub s.source tok.pos tok.len in
+let decl_local_str name s =
   Ok
     ( s.local,
       {
@@ -88,6 +98,10 @@ let decl_local tok s =
         locals = StringMap.add name s.local s.locals;
         local = s.local + 1;
       } )
+
+let decl_local tok s =
+  let name = String.sub s.source tok.pos tok.len in
+  decl_local_str name s
 
 let add_dependency binding s =
   Ok
@@ -97,13 +111,41 @@ let pop_dependencies s =
   let bindings = s.dependent_bindings in
   Ok (bindings, { s with dependent_bindings = IntSet.empty })
 
-let get_name tok s =
-  let name = String.sub s.source tok.pos tok.len in
-  match (StringMap.find_opt name s.locals, StringMap.find_opt name s.self) with
+let get_name_str name s =
+  match
+    (StringMap.find_opt name s.locals, StringMap.find_opt name s.mod_bindings)
+  with
   | Some local, _ -> Ok (Local local, s)
   | None, Some binding ->
       map (fun _ -> ModuleItem binding) (add_dependency binding) s
   | None, None -> Err ("name not found : " ^ name)
+
+let get_name tok s =
+  let name = String.sub s.source tok.pos tok.len in
+  get_name_str name s
+
+let get_name_from_binding_str name bindings s =
+  match StringMap.find_opt name bindings with
+  | Some binding ->
+      s
+      |>
+      let* () = add_dependency binding in
+      pure binding
+  | None -> Err ("name not found in mod : " ^ name)
+
+let import_str name new_name bindings s =
+  match StringMap.find_opt new_name s.mod_bindings with
+  | Some binding -> Err ("binding already exists : " ^ new_name)
+  | None ->
+      s
+      |>
+      let* binding = get_name_from_binding_str name bindings in
+      decl_foreign_binding new_name binding
+
+let full_import bindings =
+  traverse_
+    (fun (name, _) -> import_str name name bindings)
+    (StringMap.bindings bindings)
 
 let rec pat p s =
   s

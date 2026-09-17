@@ -51,13 +51,7 @@ let traverse_ r list s =
   List.fold_left g (pure () s) list
 
 type pat = Decl of int | Tuple of pat list
-
-type expr =
-  | Const of tok
-  | Var of value
-  | Bin of value * expr * expr
-  | App of expr * expr
-
+type expr = Const of tok | Var of value | App of expr * expr
 type stmt = Binding of int * pat list * expr
 
 let decl_binding_str name s =
@@ -166,7 +160,7 @@ let rec expr e s =
       let* lexpr = expr lexpr in
       let* rexpr = expr rexpr in
       let* op = get_name tok in
-      pure (Bin (op, lexpr, rexpr))
+      pure (App (App (Var op, lexpr), rexpr))
   | Ast.App (callee, arg) ->
       let* callee = expr callee in
       let* arg = expr arg in

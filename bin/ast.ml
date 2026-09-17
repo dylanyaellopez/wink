@@ -76,7 +76,14 @@ and call s =
   ( let* ) primary (fold_many (fun acc expr -> App (acc, expr)) primary) s
 
 and primary s =
-  (map (fun x -> Const x) (token Number) || map (fun x -> Var x) (token Ident))
+  (map (fun x -> Const x) (token Number)
+  || map
+       (fun x -> Var x)
+       (tokens [ Ident; UIdent ]
+       || let* _ = token LParen in
+          let* ident = token OpIdent in
+          let* _ = token RParen in
+          pure ident))
     s
 
 let attribute =

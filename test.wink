@@ -1,2 +1,3 @@
-let mul a b = a * b
-let add_and_mul a b = mul a b + mul a b
+let ( + ) a b = a + b
+let ( * ) a b = a * b
+let add_and_mul a b = a * b + a * b

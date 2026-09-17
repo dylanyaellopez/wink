@@ -1,13 +1,10 @@
 type tok_ty =
   | UIdent
   | Ident
+  | OpIdent
   | LParen
   | RParen
-  | Plus
-  | Minus
-  | Star
-  | Slash
-  | At
+  | Attr
   | Number
   | Let
   | Equal
@@ -20,20 +17,14 @@ let show_tok_ty ty =
   match ty with
   | UIdent -> "UIdent"
   | Ident -> "Ident"
+  | OpIdent -> "OpIdent"
   | LParen -> "("
   | RParen -> ")"
-  | Plus -> "+"
-  | Minus -> "-"
-  | Star -> "*"
-  | Slash -> "/"
-  | At -> "@"
+  | Attr -> "#!"
   | Number -> "Number"
   | Let -> "let"
   | Equal -> "="
   | In -> "in"
   | EOF -> "EOF"
 
-let show_tok tok source =
-  match tok.ty with
-  | UIdent | Ident | Number -> String.sub source tok.pos tok.len
-  | _ -> show_tok_ty tok.ty
+let show_tok tok source = String.sub source tok.pos tok.len

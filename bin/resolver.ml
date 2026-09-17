@@ -55,7 +55,7 @@ type pat = Decl of int | Tuple of pat list
 type expr =
   | Const of tok
   | Var of value
-  | Bin of tok * expr * expr
+  | Bin of value * expr * expr
   | App of expr * expr
 
 type stmt = Binding of int * pat list * expr
@@ -74,7 +74,7 @@ let decl_binding tok s =
           } )
 
 let decl_stmt stmt =
-  match stmt with Ast.Binding (tok, pats, expr) -> decl_binding tok
+  match stmt with Ast.Binding (atr, tok, pats, expr) -> decl_binding tok
 
 let decl_stmts stmts = traverse decl_stmt stmts
 let scope r s = match r s with Ok (res, _) -> Ok (res, s) | Err s -> Err s
@@ -123,7 +123,8 @@ let rec expr e s =
   | Ast.Bin (tok, lexpr, rexpr) ->
       let* lexpr = expr lexpr in
       let* rexpr = expr rexpr in
-      pure (Bin (tok, lexpr, rexpr))
+      let* op = get_name tok in
+      pure (Bin (op, lexpr, rexpr))
   | Ast.App (callee, arg) ->
       let* callee = expr callee in
       let* arg = expr arg in
@@ -131,7 +132,7 @@ let rec expr e s =
 
 let stmt (binding, stmt) =
   match stmt with
-  | Ast.Binding (tok, ps, e) ->
+  | Ast.Binding (atr, tok, ps, e) ->
       scope
         (let* ps = traverse pat ps in
          let* e = expr e in
@@ -142,7 +143,7 @@ let r_show_tok tok s = Ok (String.sub s.source tok.pos tok.len, s)
 
 let show_bindings ast_stmts bindings =
   let name ast_stmt =
-    match ast_stmt with Ast.Binding (tok, pats, expr) -> r_show_tok tok
+    match ast_stmt with Ast.Binding (atr, tok, pats, expr) -> r_show_tok tok
   in
   map
     (fun names ->

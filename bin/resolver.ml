@@ -51,8 +51,8 @@ let traverse_ r list s =
   List.fold_left g (pure () s) list
 
 type pat = Decl of int | Tuple of pat list
-type expr = Const of tok | Var of value | App of expr * expr
-type stmt = Binding of int * pat list * expr
+type term = Const of tok | Var of value | App of term * term
+type binding = Binding of int * pat list * term
 
 let decl_binding_str name s =
   match StringMap.find_opt name s.mod_bindings with
@@ -82,7 +82,11 @@ let decl_stmt stmt =
   match stmt with Ast.Binding (atr, tok, pats, expr) -> decl_binding tok
 
 let decl_stmts stmts = traverse decl_stmt stmts
-let scope r s = match r s with Ok (res, _) -> Ok (res, s) | Err s -> Err s
+
+let scope r s =
+  match r s with
+  | Ok (res, s') -> Ok (res, { s' with locals = s.locals })
+  | Err s -> Err s
 
 let decl_local_str name s =
   Ok
@@ -103,7 +107,7 @@ let add_dependency binding s =
 
 let pop_dependencies s =
   let bindings = s.dependent_bindings in
-  Ok (bindings, { s with dependent_bindings = IntSet.empty })
+  Ok (bindings, { s with dependent_bindings = IntSet.empty; local = 0 })
 
 let get_name_str name s =
   match
@@ -198,9 +202,17 @@ let show_dependencies stmts bindings =
     (List.combine stmts bindings)
   |> String.concat "\n"
 
-let stmts stmts =
+let stmts_test stmts =
   let* bindings = decl_stmts stmts in
+  (* TODO: Do not assume that every statement will be a binding. 
+           Come back here when statements that do not create any bindings are added *)
   let* stmts' = traverse stmt (List.combine bindings stmts) in
   let* str1 = show_bindings stmts bindings in
   let str2 = show_dependencies stmts' bindings in
   pure (str1, str2)
+
+let stmts stmts =
+  let* bindings = decl_stmts stmts in
+  (* TODO: Do not assume that every statement will be a binding. 
+           Come back here when statements that do not create any bindings are added *)
+  traverse stmt (List.combine bindings stmts)
